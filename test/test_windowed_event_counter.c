@@ -75,6 +75,26 @@ void test_WindowTimeGet_should_returnConstantValue_when_stopped(void) {
     TEST_ASSERT_EQUAL(windows[3], WEC_WindowTimeGet(timeStamps[3]));
 }
 
+void test_WindowTimeGet_should_returnNoLargerThanSpecifiedWindowTime(void) {
+    WEC_TIME_T timeStamps[] = {123U, 234U, 334U, 357U, 456U};
+    WEC_TIME_T windowMax = 200U;
+    WEC_TIME_T windows[] = {0U, 111U, windowMax, windowMax, windowMax};
+    int i = 0;
+
+    (void) WEC_WindowStart(timeStamps[i]);
+    i = 1;
+
+    TEST_ASSERT_EQUAL(windows[i], WEC_WindowTimeGet(timeStamps[i]));
+    i = 2;
+    TEST_ASSERT_EQUAL(windows[i], WEC_WindowTimeGet(timeStamps[i]));
+    i = 3;
+
+    (void) WEC_WindowStop(timeStamps[i]);
+    i = 4;
+
+    TEST_ASSERT_EQUAL(windows[i], WEC_WindowTimeGet(timeStamps[i]));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_WindowStart_should_returnOkay_when_moduleIsNotStarted);
@@ -85,5 +105,6 @@ int main(void) {
     RUN_TEST(test_WindowTimeGet_should_returnCorrectWindowTimeRegardlessOfStartTime);
     RUN_TEST(test_WindowTimeGet_should_return0BeforeFirstStart);
     RUN_TEST(test_WindowTimeGet_should_returnConstantValue_when_stopped);
+    RUN_TEST(test_WindowTimeGet_should_returnNoLargerThanSpecifiedWindowTime);
     return UNITY_END();
 }

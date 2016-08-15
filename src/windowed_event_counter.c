@@ -54,13 +54,26 @@
 // Section: Global Variable Declarations
 //
 
+/// Indicates when window is started and running
 static bool WEC_started;
+
+/// Timestamp marking the start of the measurement window
 static WEC_TIME_T WEC_startTime;
+
+/// Timestamp marking the end of the measurement window
 static WEC_TIME_T WEC_stopTime;
+
+/// Limit to the length of the time window
+static WEC_TIME_T WEC_windowLimit = 200U;
 
 //
 // Section: Macros
 //
+
+/// Updates start time to track with latest time.
+#define WEC_UpdateStartTime(a) \
+    (((a - WEC_startTime) > WEC_windowLimit) ? \
+    (a - WEC_windowLimit) : WEC_startTime)
 
 //
 // Section: Static Function Prototypes
@@ -99,6 +112,7 @@ WEC_ERROR_T WEC_WindowStop(WEC_TIME_T stopTime) {
 }
 
 WEC_TIME_T WEC_WindowTimeGet(WEC_TIME_T currentTime) {
+    WEC_UpdateStartTime(currentTime);
     WEC_TIME_T windowTime;
     if (WEC_started) {
         windowTime = currentTime - WEC_startTime;
