@@ -64,7 +64,7 @@ static WEC_TIME_T WEC_startTime;
 static WEC_TIME_T WEC_stopTime;
 
 /// Limit to the length of the time window
-static WEC_TIME_T WEC_windowLimit = 200U;
+static WEC_TIME_T WEC_windowLimit;
 
 //
 // Section: Macros
@@ -87,6 +87,21 @@ static WEC_TIME_T WEC_windowLimit = 200U;
 // Section: Template Module APIs
 //
 
+WEC_ERROR_T WEC_WindowLimitGet(void) {
+    return WEC_windowLimit;
+}
+
+WEC_ERROR_T WEC_WindowLimitSet(WEC_TIME_T windowLimit) {
+    WEC_ERROR_T err = WEC_ERROR;
+    if (false == WEC_started) {
+        err = WEC_OKAY;
+        WEC_windowLimit = windowLimit;
+    } else {
+        err = WEC_ALREADY_STARTED;
+    }
+    return err;
+}
+
 WEC_ERROR_T WEC_WindowStart(WEC_TIME_T startTime) {
     WEC_ERROR_T err = WEC_ERROR;
     if (false == WEC_started) {
@@ -103,6 +118,7 @@ WEC_ERROR_T WEC_WindowStop(WEC_TIME_T stopTime) {
     WEC_ERROR_T err = WEC_ERROR;
     if (true == WEC_started) {
         err = WEC_OKAY;
+        WEC_startTime = WEC_UpdateStartTime(stopTime);
         WEC_started = false;
         WEC_stopTime = stopTime;
     } else {
@@ -112,9 +128,9 @@ WEC_ERROR_T WEC_WindowStop(WEC_TIME_T stopTime) {
 }
 
 WEC_TIME_T WEC_WindowTimeGet(WEC_TIME_T currentTime) {
-    WEC_UpdateStartTime(currentTime);
     WEC_TIME_T windowTime;
     if (WEC_started) {
+        WEC_startTime = WEC_UpdateStartTime(currentTime);
         windowTime = currentTime - WEC_startTime;
     } else {
         windowTime = WEC_stopTime - WEC_startTime;

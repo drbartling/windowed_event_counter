@@ -77,6 +77,18 @@ typedef uint32_t WEC_TIME_T;
 //
 // Section: Template Module APIs
 //
+/**
+ * Gets the value of the current window limit.
+ * @returns the current window limit
+ */
+WEC_ERROR_T WEC_WindowLimitGet(void);
+
+/**
+ * Sets the maximum length for the measurement window
+ * @param windowLimit maximum length of measurement window
+ * @return error
+ */
+WEC_ERROR_T WEC_WindowLimitSet(WEC_TIME_T windowLimit);
 
 /**
  * Starts measurement
@@ -94,7 +106,7 @@ WEC_ERROR_T WEC_WindowStop(WEC_TIME_T stopTime);
 
 /**
  * Gets length (in time) of the measurement window
- * @param currentTime 
+ * @param currentTime
  * @returns actual length of measurement window
  */
 WEC_TIME_T WEC_WindowTimeGet(WEC_TIME_T currentTime);

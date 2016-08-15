@@ -5,6 +5,7 @@
 void setUp(void) {
     (void) WEC_WindowStart(0U);
     (void) WEC_WindowStop(0U);
+    (void) WEC_WindowLimitSet(10000U);
 }
 
 void tearDown(void) {
@@ -95,6 +96,31 @@ void test_WindowTimeGet_should_returnNoLargerThanSpecifiedWindowTime(void) {
     TEST_ASSERT_EQUAL(windows[i], WEC_WindowTimeGet(timeStamps[i]));
 }
 
+void test_WindowLimitSet_should_returnOkay_when_notStarted(void) {
+    TEST_ASSERT_EQUAL_MESSAGE(WEC_OKAY, WEC_WindowLimitSet(2000U),
+            "Expected WEC_OKAY");
+}
+
+void test_WindowLimitSet_should_returnError_when_startedg(void) {
+    (void) WEC_WindowStart(0U);
+    TEST_ASSERT_EQUAL_MESSAGE(WEC_ALREADY_STARTED, WEC_WindowLimitSet(2000U),
+            "Expected WEC_ALREADY_STARTED");
+}
+
+void test_WindowLimitGet_should_returnTheCurrentWindowLimit(void) {
+    WEC_TIME_T testVal = 100U;
+    (void) WEC_WindowLimitSet(testVal);
+    TEST_ASSERT_EQUAL(testVal, WEC_WindowLimitGet(testVal));
+
+    testVal = 152374U;
+    (void) WEC_WindowLimitSet(testVal);
+    TEST_ASSERT_EQUAL(testVal, WEC_WindowLimitGet(testVal));
+
+    testVal = 5723621U;
+    (void) WEC_WindowLimitSet(testVal);
+    TEST_ASSERT_EQUAL(testVal, WEC_WindowLimitGet(testVal));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_WindowStart_should_returnOkay_when_moduleIsNotStarted);
@@ -106,5 +132,8 @@ int main(void) {
     RUN_TEST(test_WindowTimeGet_should_return0BeforeFirstStart);
     RUN_TEST(test_WindowTimeGet_should_returnConstantValue_when_stopped);
     RUN_TEST(test_WindowTimeGet_should_returnNoLargerThanSpecifiedWindowTime);
+    RUN_TEST(test_WindowLimitSet_should_returnOkay_when_notStarted);
+    RUN_TEST(test_WindowLimitSet_should_returnError_when_startedg);
+    RUN_TEST(test_WindowLimitGet_should_returnTheCurrentWindowLimit);
     return UNITY_END();
 }
