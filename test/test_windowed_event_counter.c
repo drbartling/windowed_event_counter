@@ -2,6 +2,11 @@
 #include "unity.h"
 #include "windowed_event_counter.h"
 
+extern bool WEC_started;
+extern WEC_TIME_T WEC_startTime;
+extern WEC_TIME_T WEC_stopTime;
+extern WEC_TIME_T WEC_windowLimit;
+
 void setUp(void) {
     (void) WEC_WindowStart(0U);
     (void) WEC_WindowStop(0U);
@@ -82,10 +87,12 @@ void test_WindowTimeGet_should_returnNoLargerThanSpecifiedWindowTime(void) {
     WEC_TIME_T windows[] = {0U, 111U, windowMax, windowMax, windowMax};
     int i = 0;
 
+    (void) WEC_WindowLimitSet(windowMax);
     (void) WEC_WindowStart(timeStamps[i]);
     i = 1;
 
     TEST_ASSERT_EQUAL(windows[i], WEC_WindowTimeGet(timeStamps[i]));
+    TEST_ASSERT_EQUAL(123U, WEC_startTime);
     i = 2;
     TEST_ASSERT_EQUAL(windows[i], WEC_WindowTimeGet(timeStamps[i]));
     i = 3;
@@ -108,17 +115,28 @@ void test_WindowLimitSet_should_returnError_when_startedg(void) {
 }
 
 void test_WindowLimitGet_should_returnTheCurrentWindowLimit(void) {
-    WEC_TIME_T testVal = 100U;
-    (void) WEC_WindowLimitSet(testVal);
-    TEST_ASSERT_EQUAL(testVal, WEC_WindowLimitGet(testVal));
+    WEC_TIME_T testVal1 = 100U;
+    (void) WEC_WindowLimitSet(testVal1);
+    TEST_ASSERT_EQUAL(testVal1, WEC_WindowLimitGet());
 
-    testVal = 152374U;
-    (void) WEC_WindowLimitSet(testVal);
-    TEST_ASSERT_EQUAL(testVal, WEC_WindowLimitGet(testVal));
+    testVal1 = 152374U;
+    (void) WEC_WindowLimitSet(testVal1);
+    TEST_ASSERT_EQUAL(testVal1, WEC_WindowLimitGet());
 
-    testVal = 5723621U;
-    (void) WEC_WindowLimitSet(testVal);
-    TEST_ASSERT_EQUAL(testVal, WEC_WindowLimitGet(testVal));
+    testVal1 = 5723621U;
+    (void) WEC_WindowLimitSet(testVal1);
+    TEST_ASSERT_EQUAL(testVal1, WEC_WindowLimitGet());
+}
+
+void test_windowLimit_should_notChangeWhileRunning(void) {
+    WEC_TIME_T testVal1 = 100U;
+    WEC_TIME_T testVal2 = 200U;
+    (void) WEC_WindowLimitSet(testVal1);
+    (void) WEC_WindowLimitGet();
+    (void) WEC_WindowStart(0U);
+
+    (void) WEC_WindowLimitSet(testVal2);
+    TEST_ASSERT_EQUAL(testVal1, WEC_WindowLimitGet());
 }
 
 int main(void) {
@@ -135,5 +153,6 @@ int main(void) {
     RUN_TEST(test_WindowLimitSet_should_returnOkay_when_notStarted);
     RUN_TEST(test_WindowLimitSet_should_returnError_when_startedg);
     RUN_TEST(test_WindowLimitGet_should_returnTheCurrentWindowLimit);
+    RUN_TEST(test_windowLimit_should_notChangeWhileRunning);
     return UNITY_END();
 }

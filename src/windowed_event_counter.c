@@ -47,6 +47,15 @@
 #include <assert.h>
 
 //
+// Section: Macros
+//
+#ifdef TEST
+#    define STATIC
+#else
+#    define STATIC static
+#endif
+
+//
 // Section: Constants
 //
 
@@ -55,16 +64,16 @@
 //
 
 /// Indicates when window is started and running
-static bool WEC_started;
+STATIC bool WEC_started;
 
 /// Timestamp marking the start of the measurement window
-static WEC_TIME_T WEC_startTime;
+STATIC WEC_TIME_T WEC_startTime;
 
 /// Timestamp marking the end of the measurement window
-static WEC_TIME_T WEC_stopTime;
+STATIC WEC_TIME_T WEC_stopTime;
 
 /// Limit to the length of the time window
-static WEC_TIME_T WEC_windowLimit;
+STATIC WEC_TIME_T WEC_windowLimit;
 
 //
 // Section: Macros
@@ -87,7 +96,7 @@ static WEC_TIME_T WEC_windowLimit;
 // Section: Template Module APIs
 //
 
-WEC_ERROR_T WEC_WindowLimitGet(void) {
+WEC_TIME_T WEC_WindowLimitGet(void) {
     return WEC_windowLimit;
 }
 
@@ -128,13 +137,17 @@ WEC_ERROR_T WEC_WindowStop(WEC_TIME_T stopTime) {
 }
 
 WEC_TIME_T WEC_WindowTimeGet(WEC_TIME_T currentTime) {
+    WEC_ERROR_T err = WEC_ERROR;
     WEC_TIME_T windowTime;
     if (WEC_started) {
+        err = WEC_OKAY;
         WEC_startTime = WEC_UpdateStartTime(currentTime);
         windowTime = currentTime - WEC_startTime;
     } else {
+        err = WEC_NOT_STARTED;
         windowTime = WEC_stopTime - WEC_startTime;
     }
+    assert(WEC_ERROR != err);
     return windowTime;
 }
 

@@ -81,7 +81,7 @@ typedef uint32_t WEC_TIME_T;
  * Gets the value of the current window limit.
  * @returns the current window limit
  */
-WEC_ERROR_T WEC_WindowLimitGet(void);
+WEC_TIME_T WEC_WindowLimitGet(void);
 
 /**
  * Sets the maximum length for the measurement window
