@@ -79,9 +79,6 @@ STATIC WEC_TIME_T WEC_stopTime;
 /// Limit to the length of the time window
 STATIC WEC_TIME_T WEC_windowLimit;
 
-///
-STATIC bool WEC_windowLimitReached;
-
 /// Stores the time of each event
 STATIC WEC_TIME_T WEC_eventBuffer[WEC_EVENT_BUFFER_SIZE];
 
@@ -100,7 +97,7 @@ STATIC WEC_TIME_T *WEC_eventBufferTail = WEC_eventBuffer;
 //
 
 /// Removes events equal to or older than the window limit
-STATIC void WEC_EventExpire(void);
+STATIC void WEC_EventExpire(WEC_TIME_T currentTime);
 
 /// Increments pointers around the circular buffer
 STATIC WEC_TIME_T *WEC_PtrIncrement(WEC_TIME_T ptr[]);
@@ -112,16 +109,14 @@ STATIC WEC_TIME_T WEC_StartTimeUpdate(WEC_TIME_T currentTime);
 // Section: Static Function Definitions
 //
 
-STATIC void WEC_EventExpire(void) {
-    if (WEC_windowLimitReached) {
-        while (WEC_count) {
-            WEC_TIME_T oldestEvent = *WEC_eventBufferTail;
-            if (WEC_startTime < oldestEvent) {
-                break;
-            } else {
-                WEC_count--;
-                WEC_eventBufferTail = WEC_PtrIncrement(WEC_eventBufferTail);
-            }
+STATIC void WEC_EventExpire(WEC_TIME_T currentTime) {
+    while (WEC_count) {
+        WEC_TIME_T oldestEvent = *WEC_eventBufferTail;
+        if (currentTime - oldestEvent < WEC_windowLimit) {
+            break;
+        } else {
+            WEC_count--;
+            WEC_eventBufferTail = WEC_PtrIncrement(WEC_eventBufferTail);
         }
     }
 }
@@ -140,7 +135,6 @@ STATIC WEC_TIME_T WEC_StartTimeUpdate(WEC_TIME_T currentTime) {
     WEC_TIME_T newStart;
     if ((currentTime - WEC_startTime) >= WEC_windowLimit) {
         newStart = currentTime - WEC_windowLimit;
-        WEC_windowLimitReached = true;
     } else {
         newStart = WEC_startTime;
     }
@@ -156,7 +150,7 @@ WEC_COUNT_T WEC_EventAdd(WEC_TIME_T eventTime) {
     WEC_startTime = WEC_StartTimeUpdate(eventTime);
     *WEC_eventBufferHead = eventTime;
     WEC_eventBufferHead = WEC_PtrIncrement(WEC_eventBufferHead);
-    WEC_EventExpire();
+    WEC_EventExpire(eventTime);
     return WEC_count;
 }
 
@@ -191,7 +185,6 @@ WEC_ERROR_T WEC_WindowStart(WEC_TIME_T startTime) {
         err = WEC_OKAY;
         WEC_started = true;
         WEC_startTime = startTime;
-        WEC_windowLimitReached = false;
     } else {
         err = WEC_ALREADY_STARTED;
     }
