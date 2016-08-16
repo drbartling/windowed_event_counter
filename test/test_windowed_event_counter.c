@@ -142,17 +142,25 @@ void test_windowLimit_should_notChangeWhileRunning(void) {
     TEST_ASSERT_EQUAL(testVal1, WEC_WindowLimitGet());
 }
 
-void test_EventAdd_should_increaseTheEventCount(void) {
+void test_EventAdd_should_returnOkay_when_addingToABufferSuccessfully(void) {
     (void) WEC_WindowStart(0U);
-    TEST_ASSERT_EQUAL(1U, WEC_EventAdd(1U));
-    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(1U));
+    TEST_ASSERT_EQUAL(WEC_OKAY, WEC_EventAdd(1U));
 }
 
 void test_EventCount_should_startAt0(void) {
     TEST_ASSERT_EQUAL(0U, WEC_EventCountGet(0U));
 }
 
-void test_EventCount_should_returnCurrentCount(void) {
+void test_EventAdd_should_increaseTheEventCount(void) {
+    (void) WEC_WindowStart(0U);
+    (void) WEC_EventAdd(1U);
+    TEST_ASSERT_EQUAL(1U, WEC_EventCountGet(1U));
+    (void) WEC_EventAdd(1U);
+    TEST_ASSERT_EQUAL(2U, WEC_EventCountGet(1U));
+}
+
+void test_EventAdd_should_removeExpiredCounts(void) {
+    (void) WEC_WindowLimitSet(200U);
     (void) WEC_WindowStart(0U);
 
     (void) WEC_EventAdd(0U);
@@ -160,16 +168,15 @@ void test_EventCount_should_returnCurrentCount(void) {
 
     (void) WEC_EventAdd(0U);
     TEST_ASSERT_EQUAL(2U, WEC_EventCountGet(0U));
-}
 
-void test_EventAdd_should_removeExpiredCounts(void) {
-    (void) WEC_WindowLimitSet(200U);
-    (void) WEC_WindowStart(0U);
-    TEST_ASSERT_EQUAL(1U, WEC_EventAdd(0U));
-    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(0U));
-    TEST_ASSERT_EQUAL(3U, WEC_EventAdd(100U));
-    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(200U));
-    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(300U));
+    (void) WEC_EventAdd(100U);
+    TEST_ASSERT_EQUAL(3U, WEC_EventCountGet(100U));
+
+    (void) WEC_EventAdd(200U);
+    TEST_ASSERT_EQUAL(2U, WEC_EventCountGet(200U));
+
+    (void) WEC_EventAdd(300U);
+    TEST_ASSERT_EQUAL(2U, WEC_EventCountGet(300U));
 }
 
 void test_PtrIncrement_should_incrementThePointerBy1(void) {
@@ -190,18 +197,30 @@ void test_OperationAroundOverflow(void) {
     (void) WEC_WindowLimitSet(200U);
     TEST_ASSERT_TRUE(1000U < time); // Checking that I set the test up correctly
     (void) WEC_WindowStart(time);
-    TEST_ASSERT_EQUAL(1U, WEC_EventAdd(time));
-    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(time));
+
+
+    (void) WEC_EventAdd(time);
+    TEST_ASSERT_EQUAL(1U, WEC_EventCountGet(time));
+
+    (void) WEC_EventAdd(time);
+    TEST_ASSERT_EQUAL(2U, WEC_EventCountGet(time));
+
     time += 100U;
-    TEST_ASSERT_EQUAL(3U, WEC_EventAdd(time));
+    (void) WEC_EventAdd(time);
+    TEST_ASSERT_EQUAL(3U, WEC_EventCountGet(time));
+
     time += 100U;
-    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(time));
+    (void) WEC_EventAdd(time);
+    TEST_ASSERT_EQUAL(2U, WEC_EventCountGet(time));
+
     time += 100U;
-    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(time));
+    (void) WEC_EventAdd(time);
+    TEST_ASSERT_EQUAL(2U, WEC_EventCountGet(time));
+
     time += 100U;
-    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(time));
-    time += 100U;
-    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(time));
+    (void) WEC_EventAdd(time);
+    TEST_ASSERT_EQUAL(2U, WEC_EventCountGet(time));
+
     TEST_ASSERT_TRUE(1000U > time); // Checking that I set the test up correctly
 }
 
@@ -210,9 +229,33 @@ void test_EventAdd_should_removeExpiredEventsBeforeAddingNewEvents(void) {
     (void) WEC_WindowLimitSet(WEC_EVENT_BUFFER_SIZE);
     (void) WEC_WindowStart(time);
     for (time = 0; time < WEC_EVENT_BUFFER_SIZE; time++) {
-        TEST_ASSERT_EQUAL(time + 1, WEC_EventAdd(time));
+        (void) WEC_EventAdd(time);
+        TEST_ASSERT_EQUAL(time + 1, WEC_EventCountGet(time));
     }
-    TEST_ASSERT_EQUAL(WEC_EVENT_BUFFER_SIZE, WEC_EventAdd(time));
+    TEST_ASSERT_EQUAL(WEC_OKAY, WEC_EventAdd(time));
+    TEST_ASSERT_EQUAL(WEC_EVENT_BUFFER_SIZE, WEC_EventCountGet(time));
+}
+
+void test_EventAdd_should_removeOldestEvent_when_addingToFullBuffer(void) {
+    WEC_TIME_T time = 0;
+    (void) WEC_WindowLimitSet(WEC_EVENT_BUFFER_SIZE + 1);
+    (void) WEC_WindowStart(time);
+    for (time = 0; time < WEC_EVENT_BUFFER_SIZE; time++) {
+        (void) WEC_EventAdd(time);
+        TEST_ASSERT_EQUAL(time + 1, WEC_EventCountGet(time));
+    }
+    (void) WEC_EventAdd(time);
+    TEST_ASSERT_EQUAL(WEC_EVENT_BUFFER_SIZE, WEC_EventCountGet(time));
+}
+
+void test_EventAdd_should_returnError_when_addingToFullBuffer(void) {
+    WEC_TIME_T time = 0;
+    (void) WEC_WindowLimitSet(WEC_EVENT_BUFFER_SIZE + 1);
+    (void) WEC_WindowStart(time);
+    for (time = 0; time < WEC_EVENT_BUFFER_SIZE; time++) {
+        (void) WEC_EventAdd(time);
+    }
+    TEST_ASSERT_EQUAL(WEC_BUFFER_OVERFLOW, WEC_EventAdd(time));
 }
 
 int main(void) {
@@ -230,13 +273,15 @@ int main(void) {
     RUN_TEST(test_WindowLimitSet_should_returnError_when_startedg);
     RUN_TEST(test_WindowLimitGet_should_returnTheCurrentWindowLimit);
     RUN_TEST(test_windowLimit_should_notChangeWhileRunning);
+    RUN_TEST(test_EventAdd_should_returnOkay_when_addingToABufferSuccessfully);
     RUN_TEST(test_EventAdd_should_increaseTheEventCount);
     RUN_TEST(test_EventCount_should_startAt0);
-    RUN_TEST(test_EventCount_should_returnCurrentCount);
     RUN_TEST(test_EventAdd_should_removeExpiredCounts);
     RUN_TEST(test_PtrIncrement_should_incrementThePointerBy1);
     RUN_TEST(test_PtrIncrement_should_wrapAround);
     RUN_TEST(test_OperationAroundOverflow);
     RUN_TEST(test_EventAdd_should_removeExpiredEventsBeforeAddingNewEvents);
+    RUN_TEST(test_EventAdd_should_removeOldestEvent_when_addingToFullBuffer);
+    RUN_TEST(test_EventAdd_should_returnError_when_addingToFullBuffer);
     return UNITY_END();
 }

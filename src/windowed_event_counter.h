@@ -66,10 +66,24 @@
 //
 
 typedef enum {
-    WEC_OKAY = 0, ///< No error detected
-    WEC_ERROR, ///< Unspecified error detected
-    WEC_ALREADY_STARTED, ///< Windowed event detector is already started
-    WEC_NOT_STARTED, ///< Windowed event detector is not started
+    /// Everything is A-Okay here!
+    WEC_OKAY = 0,
+    /// Unspecified error detected.
+    /// This error is returned as a result of incomplete implementation of the
+    /// API.  Contact the maintainer of this module if you get this error.
+    WEC_ERROR,
+    /// Windowed event detector is already started.
+    /// Make sure to not call WEC_WindowStart() before the function that returned
+    /// this error.  If necessary, call WEC_WindowStop().
+    WEC_ALREADY_STARTED,
+    /// Windowed event detector is not started
+    /// Make sure to call WEC_WindowStart() before the function that returned
+    /// this error.
+    WEC_NOT_STARTED,
+    /// Added event to a full buffer.
+    /// Try increasing WEC_EVENT_BUFFER_SIZE.
+    /// @see WEC_EVENT_BUFFER_SIZE
+    WEC_BUFFER_OVERFLOW,
 } WEC_ERROR_T;
 
 typedef uint32_t WEC_TIME_T;
@@ -83,9 +97,10 @@ typedef uint8_t WEC_COUNT_T;
 /**
  * Updates event count with a new event and returns the total count.
  * @param eventTime time at which the event was detected
- * @returns current count of events after adding 1 event
+ * @returns WEC_OKAY when no error was detected.
+ * @returns WEC_BUFFER_OVERFLOW when event was added to a full buffer.
  */
-WEC_COUNT_T WEC_EventAdd(WEC_TIME_T eventTime);
+WEC_ERROR_T WEC_EventAdd(WEC_TIME_T eventTime);
 
 /**
  * Gets the current number of events.

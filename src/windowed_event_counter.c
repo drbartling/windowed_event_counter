@@ -96,6 +96,9 @@ STATIC WEC_TIME_T *WEC_eventBufferTail = WEC_eventBuffer;
 // Section: Static Function Prototypes
 //
 
+/// Remove oldest event in the queue
+STATIC void WEC_EventOldestRemove(void);
+
 /// Removes events equal to or older than the window limit
 STATIC void WEC_EventExpire(WEC_TIME_T currentTime);
 
@@ -109,14 +112,18 @@ STATIC WEC_TIME_T WEC_StartTimeUpdate(WEC_TIME_T currentTime);
 // Section: Static Function Definitions
 //
 
+STATIC void WEC_EventOldestRemove(void) {
+    WEC_count--;
+    WEC_eventBufferTail = WEC_PtrIncrement(WEC_eventBufferTail);
+}
+
 STATIC void WEC_EventExpire(WEC_TIME_T currentTime) {
     while (WEC_count) {
         WEC_TIME_T oldestEvent = *WEC_eventBufferTail;
         if (currentTime - oldestEvent < WEC_windowLimit) {
             break;
         } else {
-            WEC_count--;
-            WEC_eventBufferTail = WEC_PtrIncrement(WEC_eventBufferTail);
+            WEC_EventOldestRemove();
         }
     }
 }
@@ -145,13 +152,20 @@ STATIC WEC_TIME_T WEC_StartTimeUpdate(WEC_TIME_T currentTime) {
 // Section: Template Module APIs
 //
 
-WEC_COUNT_T WEC_EventAdd(WEC_TIME_T eventTime) {
+WEC_ERROR_T WEC_EventAdd(WEC_TIME_T eventTime) {
+    WEC_ERROR_T err = WEC_ERROR;
     WEC_EventExpire(eventTime);
+    if (WEC_EVENT_BUFFER_SIZE > WEC_count) {
+        err = WEC_OKAY;
+    } else {
+        err = WEC_BUFFER_OVERFLOW;
+        WEC_EventOldestRemove(); // Buffer overflow
+    }
     WEC_count++;
     WEC_startTime = WEC_StartTimeUpdate(eventTime);
     *WEC_eventBufferHead = eventTime;
     WEC_eventBufferHead = WEC_PtrIncrement(WEC_eventBufferHead);
-    return WEC_count;
+    return err;
 }
 
 WEC_COUNT_T WEC_EventCountGet(WEC_TIME_T currentTime) {
