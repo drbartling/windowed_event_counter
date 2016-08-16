@@ -6,6 +6,9 @@ extern bool WEC_started;
 extern WEC_TIME_T WEC_startTime;
 extern WEC_TIME_T WEC_stopTime;
 extern WEC_TIME_T WEC_windowLimit;
+extern WEC_TIME_T WEC_eventBuffer[WEC_EVENT_BUFFER_SIZE];
+
+WEC_TIME_T *WEC_PtrIncrement(WEC_TIME_T ptr[]);
 
 void setUp(void) {
     (void) WEC_WindowStart(0U);
@@ -15,6 +18,7 @@ void setUp(void) {
 
 void tearDown(void) {
     (void) WEC_WindowStop(0U);
+    WEC_EventsClear();
 }
 
 void test_WindowStart_should_returnOkay_when_moduleIsNotStarted(void) {
@@ -81,7 +85,7 @@ void test_WindowTimeGet_should_returnConstantValue_when_stopped(void) {
     TEST_ASSERT_EQUAL(windows[3], WEC_WindowTimeGet(timeStamps[3]));
 }
 
-void test_WindowTimeGet_should_returnNoLargerThanSpecifiedWindowTime(void) {
+void test_WindowTimeGet_should_returnNoLargerThanSpecifiedWindowTimeLimit(void) {
     WEC_TIME_T timeStamps[] = {123U, 234U, 334U, 357U, 456U};
     WEC_TIME_T windowMax = 200U;
     WEC_TIME_T windows[] = {0U, 111U, windowMax, windowMax, windowMax};
@@ -92,7 +96,6 @@ void test_WindowTimeGet_should_returnNoLargerThanSpecifiedWindowTime(void) {
     i = 1;
 
     TEST_ASSERT_EQUAL(windows[i], WEC_WindowTimeGet(timeStamps[i]));
-    TEST_ASSERT_EQUAL(123U, WEC_startTime);
     i = 2;
     TEST_ASSERT_EQUAL(windows[i], WEC_WindowTimeGet(timeStamps[i]));
     i = 3;
@@ -139,6 +142,69 @@ void test_windowLimit_should_notChangeWhileRunning(void) {
     TEST_ASSERT_EQUAL(testVal1, WEC_WindowLimitGet());
 }
 
+void test_EventAdd_should_increaseTheEventCount(void) {
+    (void) WEC_WindowStart(0U);
+    TEST_ASSERT_EQUAL(1U, WEC_EventAdd(1U));
+    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(1U));
+}
+
+void test_EventCount_should_startAt0(void) {
+    TEST_ASSERT_EQUAL(0U, WEC_EventCountGet(0U));
+}
+
+void test_EventCount_should_returnCurrentCount(void) {
+    (void) WEC_WindowStart(0U);
+
+    (void) WEC_EventAdd(0U);
+    TEST_ASSERT_EQUAL(1U, WEC_EventCountGet(0U));
+
+    (void) WEC_EventAdd(0U);
+    TEST_ASSERT_EQUAL(2U, WEC_EventCountGet(0U));
+}
+
+void test_EventAdd_should_removeExpiredCounts(void) {
+    (void) WEC_WindowLimitSet(200U);
+    (void) WEC_WindowStart(0U);
+    TEST_ASSERT_EQUAL(1U, WEC_EventAdd(0U));
+    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(0U));
+    TEST_ASSERT_EQUAL(3U, WEC_EventAdd(100U));
+    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(200U));
+    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(300U));
+}
+
+void test_PtrIncrement_should_incrementThePointerBy1(void) {
+    WEC_TIME_T *ptr = WEC_eventBuffer;
+    ptr = WEC_PtrIncrement(ptr);
+    TEST_ASSERT_EQUAL_PTR(WEC_eventBuffer + 1, ptr);
+}
+
+void test_PtrIncrement_should_wrapAround(void) {
+    WEC_TIME_T *ptr = &WEC_eventBuffer[WEC_EVENT_BUFFER_SIZE - 1];
+    ptr = WEC_PtrIncrement(ptr);
+    TEST_ASSERT_EQUAL(0, ptr - WEC_eventBuffer);
+    TEST_ASSERT_EQUAL_PTR(WEC_eventBuffer, ptr);
+}
+
+void test_OperationAroundOverflow(void) {
+    WEC_TIME_T time = 0 - 342;
+    (void) WEC_WindowLimitSet(200U);
+    TEST_ASSERT_TRUE(1000U < time);
+    (void) WEC_WindowStart(time);
+    TEST_ASSERT_EQUAL(1U, WEC_EventAdd(time));
+    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(time));
+    time += 100U;
+    TEST_ASSERT_EQUAL(3U, WEC_EventAdd(time));
+    time += 100U;
+    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(time));
+    time += 100U;
+    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(time));
+    time += 100U;
+    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(time));
+    time += 100U;
+    TEST_ASSERT_EQUAL(2U, WEC_EventAdd(time));
+    TEST_ASSERT_TRUE(1000U > time);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_WindowStart_should_returnOkay_when_moduleIsNotStarted);
@@ -149,10 +215,17 @@ int main(void) {
     RUN_TEST(test_WindowTimeGet_should_returnCorrectWindowTimeRegardlessOfStartTime);
     RUN_TEST(test_WindowTimeGet_should_return0BeforeFirstStart);
     RUN_TEST(test_WindowTimeGet_should_returnConstantValue_when_stopped);
-    RUN_TEST(test_WindowTimeGet_should_returnNoLargerThanSpecifiedWindowTime);
+    RUN_TEST(test_WindowTimeGet_should_returnNoLargerThanSpecifiedWindowTimeLimit);
     RUN_TEST(test_WindowLimitSet_should_returnOkay_when_notStarted);
     RUN_TEST(test_WindowLimitSet_should_returnError_when_startedg);
     RUN_TEST(test_WindowLimitGet_should_returnTheCurrentWindowLimit);
     RUN_TEST(test_windowLimit_should_notChangeWhileRunning);
+    RUN_TEST(test_EventAdd_should_increaseTheEventCount);
+    RUN_TEST(test_EventCount_should_startAt0);
+    RUN_TEST(test_EventCount_should_returnCurrentCount);
+    RUN_TEST(test_EventAdd_should_removeExpiredCounts);
+    RUN_TEST(test_PtrIncrement_should_incrementThePointerBy1);
+    RUN_TEST(test_PtrIncrement_should_wrapAround);
+    RUN_TEST(test_OperationAroundOverflow);
     return UNITY_END();
 }

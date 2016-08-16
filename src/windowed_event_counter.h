@@ -74,9 +74,32 @@ typedef enum {
 
 typedef uint32_t WEC_TIME_T;
 
+typedef uint8_t WEC_COUNT_T;
+
 //
 // Section: Template Module APIs
 //
+
+/**
+ * Updates event count with a new event and returns the total count.
+ * @param eventTime time at which the event was detected
+ * @returns current count of events after adding 1 event
+ */
+WEC_COUNT_T WEC_EventAdd(WEC_TIME_T eventTime);
+
+/**
+ * Gets the current number of events.
+ * Removes expired events and returns the count of remaining events.
+ * @param currentTime
+ * @returns Count of events
+ */
+WEC_COUNT_T WEC_EventCountGet(WEC_TIME_T currentTime);
+
+/**
+ * Clears out all events.
+ */
+void WEC_EventsClear(void);
+
 /**
  * Gets the value of the current window limit.
  * @returns the current window limit

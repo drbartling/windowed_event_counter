@@ -45,6 +45,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <assert.h>
+#include <stddef.h>
 
 //
 // Section: Macros
@@ -63,6 +64,9 @@
 // Section: Global Variable Declarations
 //
 
+/// current count of events
+STATIC WEC_COUNT_T WEC_count;
+
 /// Indicates when window is started and running
 STATIC bool WEC_started;
 
@@ -75,26 +79,96 @@ STATIC WEC_TIME_T WEC_stopTime;
 /// Limit to the length of the time window
 STATIC WEC_TIME_T WEC_windowLimit;
 
+///
+STATIC bool WEC_windowLimitReached;
+
+/// Stores the time of each event
+STATIC WEC_TIME_T WEC_eventBuffer[WEC_EVENT_BUFFER_SIZE];
+
+/// points to position to add the next event
+STATIC WEC_TIME_T *WEC_eventBufferHead = WEC_eventBuffer;
+
+/// points to oldest event
+STATIC WEC_TIME_T *WEC_eventBufferTail = WEC_eventBuffer;
+
 //
 // Section: Macros
 //
-
-/// Updates start time to track with latest time.
-#define WEC_UpdateStartTime(a) \
-    (((a - WEC_startTime) > WEC_windowLimit) ? \
-    (a - WEC_windowLimit) : WEC_startTime)
 
 //
 // Section: Static Function Prototypes
 //
 
+/// Removes events equal to or older than the window limit
+STATIC void WEC_EventExpire(void);
+
+/// Increments pointers around the circular buffer
+STATIC WEC_TIME_T *WEC_PtrIncrement(WEC_TIME_T ptr[]);
+
+/// Updates the start time based on the window limit and current time
+STATIC WEC_TIME_T WEC_StartTimeUpdate(WEC_TIME_T currentTime);
+
 //
 // Section: Static Function Definitions
 //
 
+STATIC void WEC_EventExpire(void) {
+    if (WEC_windowLimitReached) {
+        while (WEC_count) {
+            WEC_TIME_T oldestEvent = *WEC_eventBufferTail;
+            if (WEC_startTime < oldestEvent) {
+                break;
+            } else {
+                WEC_count--;
+                WEC_eventBufferTail = WEC_PtrIncrement(WEC_eventBufferTail);
+            }
+        }
+    }
+}
+
+STATIC WEC_TIME_T * WEC_PtrIncrement(WEC_TIME_T ptr[]) {
+    WEC_TIME_T * const limit = &WEC_eventBuffer[WEC_EVENT_BUFFER_SIZE - 1];
+    if (limit > ptr) {
+        ptr = &ptr[1];
+    } else {
+        ptr = WEC_eventBuffer;
+    }
+    return ptr;
+}
+
+STATIC WEC_TIME_T WEC_StartTimeUpdate(WEC_TIME_T currentTime) {
+    WEC_TIME_T newStart;
+    if ((currentTime - WEC_startTime) >= WEC_windowLimit) {
+        newStart = currentTime - WEC_windowLimit;
+        WEC_windowLimitReached = true;
+    } else {
+        newStart = WEC_startTime;
+    }
+    return newStart;
+}
+
 //
 // Section: Template Module APIs
 //
+
+WEC_COUNT_T WEC_EventAdd(WEC_TIME_T eventTime) {
+    WEC_count++;
+    WEC_startTime = WEC_StartTimeUpdate(eventTime);
+    *WEC_eventBufferHead = eventTime;
+    WEC_eventBufferHead = WEC_PtrIncrement(WEC_eventBufferHead);
+    WEC_EventExpire();
+    return WEC_count;
+}
+
+WEC_COUNT_T WEC_EventCountGet(WEC_TIME_T currentTime) {
+    return WEC_count;
+}
+
+void WEC_EventsClear(void) {
+    WEC_count = 0;
+    WEC_eventBufferHead = WEC_eventBuffer;
+    WEC_eventBufferTail = WEC_eventBuffer;
+}
 
 WEC_TIME_T WEC_WindowLimitGet(void) {
     return WEC_windowLimit;
@@ -117,6 +191,7 @@ WEC_ERROR_T WEC_WindowStart(WEC_TIME_T startTime) {
         err = WEC_OKAY;
         WEC_started = true;
         WEC_startTime = startTime;
+        WEC_windowLimitReached = false;
     } else {
         err = WEC_ALREADY_STARTED;
     }
@@ -127,10 +202,11 @@ WEC_ERROR_T WEC_WindowStop(WEC_TIME_T stopTime) {
     WEC_ERROR_T err = WEC_ERROR;
     if (true == WEC_started) {
         err = WEC_OKAY;
-        WEC_startTime = WEC_UpdateStartTime(stopTime);
+        WEC_startTime = WEC_StartTimeUpdate(stopTime);
         WEC_started = false;
         WEC_stopTime = stopTime;
     } else {
+
         err = WEC_NOT_STARTED;
     }
     return err;
@@ -141,7 +217,7 @@ WEC_TIME_T WEC_WindowTimeGet(WEC_TIME_T currentTime) {
     WEC_TIME_T windowTime;
     if (WEC_started) {
         err = WEC_OKAY;
-        WEC_startTime = WEC_UpdateStartTime(currentTime);
+        WEC_startTime = WEC_StartTimeUpdate(currentTime);
         windowTime = currentTime - WEC_startTime;
     } else {
         err = WEC_NOT_STARTED;
