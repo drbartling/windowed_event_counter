@@ -59,7 +59,7 @@
 //
 
 /// Number of available elements in the event buffer.
-#    define WEC_EVENT_BUFFER_SIZE (30)
+#    define WEC_EVENT_BUFFER_SIZE (30U)
 
 //
 // Section: Data Types

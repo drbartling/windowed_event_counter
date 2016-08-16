@@ -146,11 +146,11 @@ STATIC WEC_TIME_T WEC_StartTimeUpdate(WEC_TIME_T currentTime) {
 //
 
 WEC_COUNT_T WEC_EventAdd(WEC_TIME_T eventTime) {
+    WEC_EventExpire(eventTime);
     WEC_count++;
     WEC_startTime = WEC_StartTimeUpdate(eventTime);
     *WEC_eventBufferHead = eventTime;
     WEC_eventBufferHead = WEC_PtrIncrement(WEC_eventBufferHead);
-    WEC_EventExpire(eventTime);
     return WEC_count;
 }
 
