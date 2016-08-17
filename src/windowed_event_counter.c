@@ -154,6 +154,9 @@ STATIC WEC_TIME_T WEC_StartTimeUpdate(WEC_TIME_T currentTime) {
 
 WEC_ERROR_T WEC_EventAdd(WEC_TIME_T eventTime) {
     WEC_ERROR_T err = WEC_ERROR;
+    if (false == WEC_started) {
+        return WEC_NOT_STARTED;
+    }
     WEC_EventExpire(eventTime);
     if (WEC_EVENT_BUFFER_SIZE > WEC_count) {
         err = WEC_OKAY;

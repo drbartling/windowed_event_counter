@@ -258,6 +258,10 @@ void test_EventAdd_should_returnError_when_addingToFullBuffer(void) {
     TEST_ASSERT_EQUAL(WEC_BUFFER_OVERFLOW, WEC_EventAdd(time));
 }
 
+void test_EventAdd_should_returnError_when_moduleIsNotStarted(void) {
+    TEST_ASSERT_EQUAL(WEC_NOT_STARTED, WEC_EventAdd(1U));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_WindowStart_should_returnOkay_when_moduleIsNotStarted);
@@ -283,5 +287,6 @@ int main(void) {
     RUN_TEST(test_EventAdd_should_removeExpiredEventsBeforeAddingNewEvents);
     RUN_TEST(test_EventAdd_should_removeOldestEvent_when_addingToFullBuffer);
     RUN_TEST(test_EventAdd_should_returnError_when_addingToFullBuffer);
+    RUN_TEST(test_EventAdd_should_returnError_when_moduleIsNotStarted);
     return UNITY_END();
 }
