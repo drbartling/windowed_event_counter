@@ -229,9 +229,11 @@ void test_EventAdd_should_removeExpiredEventsBeforeAddingNewEvents(void) {
     (void) WEC_WindowLimitSet(WEC_EVENT_BUFFER_SIZE);
     (void) WEC_WindowStart(time);
     for (time = 0; time < WEC_EVENT_BUFFER_SIZE; time++) {
-        (void) WEC_EventAdd(time);
+        TEST_ASSERT_EQUAL(WEC_OKAY, WEC_EventAdd(time));
         TEST_ASSERT_EQUAL(time + 1, WEC_EventCountGet(time));
     }
+
+    /* Expired events are removed before the buffer overflows */
     TEST_ASSERT_EQUAL(WEC_OKAY, WEC_EventAdd(time));
     TEST_ASSERT_EQUAL(WEC_EVENT_BUFFER_SIZE, WEC_EventCountGet(time));
 }
@@ -241,10 +243,15 @@ void test_EventAdd_should_removeOldestEvent_when_addingToFullBuffer(void) {
     (void) WEC_WindowLimitSet(WEC_EVENT_BUFFER_SIZE + 1);
     (void) WEC_WindowStart(time);
     for (time = 0; time < WEC_EVENT_BUFFER_SIZE; time++) {
-        (void) WEC_EventAdd(time);
+        TEST_ASSERT_EQUAL(WEC_OKAY, WEC_EventAdd(time));
         TEST_ASSERT_EQUAL(time + 1, WEC_EventCountGet(time));
     }
-    (void) WEC_EventAdd(time);
+
+    /* Buffer overflows and oldest event is removed */
+    TEST_ASSERT_EQUAL_MESSAGE(WEC_BUFFER_OVERFLOW, WEC_EventAdd(time),
+            "Expected WEC_BUFFER_OVERFLOW");
+
+    /* This caps the count at the buffer size */
     TEST_ASSERT_EQUAL(WEC_EVENT_BUFFER_SIZE, WEC_EventCountGet(time));
 }
 
