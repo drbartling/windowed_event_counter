@@ -247,14 +247,11 @@ WEC_ERROR_T WEC_WindowStop(WEC_TIME_T stopTime) {
 }
 
 WEC_TIME_T WEC_WindowTimeGet(WEC_TIME_T currentTime) {
-    WEC_ERROR_T err = WEC_ERROR;
     WEC_TIME_T windowTime;
     if (WEC_started) {
-        err = WEC_OKAY;
         WEC_startTime = WEC_StartTimeUpdate(currentTime);
         windowTime = currentTime - WEC_startTime;
     } else {
-        err = WEC_NOT_STARTED;
         windowTime = WEC_stopTime - WEC_startTime;
     }
     return windowTime;
