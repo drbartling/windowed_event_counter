@@ -13,12 +13,12 @@ WEC_TIME_T *WEC_PtrIncrement(WEC_TIME_T ptr[]);
 void setUp(void) {
     (void) WEC_WindowStart(0U);
     (void) WEC_WindowStop(0U);
+    WEC_EventsClear();
     (void) WEC_WindowLimitSet(10000U);
 }
 
 void tearDown(void) {
     (void) WEC_WindowStop(0U);
-    WEC_EventsClear();
 }
 
 void test_WindowStart_should_returnOkay_when_moduleIsNotStarted(void) {
@@ -144,7 +144,8 @@ void test_windowLimit_should_notChangeWhileRunning(void) {
 
 void test_EventAdd_should_returnOkay_when_addingToABufferSuccessfully(void) {
     (void) WEC_WindowStart(0U);
-    TEST_ASSERT_EQUAL(WEC_OKAY, WEC_EventAdd(1U));
+    TEST_ASSERT_EQUAL_MESSAGE(WEC_OKAY, WEC_EventAdd(1U),
+            "Expected WEC_OKAY");
 }
 
 void test_EventCount_should_startAt0(void) {
@@ -188,6 +189,7 @@ void test_PtrIncrement_should_incrementThePointerBy1(void) {
 void test_PtrIncrement_should_wrapAround(void) {
     WEC_TIME_T *ptr = &WEC_eventBuffer[WEC_EVENT_BUFFER_SIZE - 1];
     ptr = WEC_PtrIncrement(ptr);
+
     TEST_ASSERT_EQUAL(0, ptr - WEC_eventBuffer);
     TEST_ASSERT_EQUAL_PTR(WEC_eventBuffer, ptr);
 }
@@ -232,6 +234,7 @@ void test_EventAdd_should_removeExpiredEventsBeforeAddingNewEvents(void) {
         (void) WEC_EventAdd(time);
         TEST_ASSERT_EQUAL(time + 1, WEC_EventCountGet(time));
     }
+
     TEST_ASSERT_EQUAL(WEC_OKAY, WEC_EventAdd(time));
     TEST_ASSERT_EQUAL(WEC_EVENT_BUFFER_SIZE, WEC_EventCountGet(time));
 }
@@ -245,6 +248,7 @@ void test_EventAdd_should_removeOldestEvent_when_addingToFullBuffer(void) {
         TEST_ASSERT_EQUAL(time + 1, WEC_EventCountGet(time));
     }
     (void) WEC_EventAdd(time);
+
     TEST_ASSERT_EQUAL(WEC_EVENT_BUFFER_SIZE, WEC_EventCountGet(time));
 }
 
@@ -255,11 +259,39 @@ void test_EventAdd_should_returnError_when_addingToFullBuffer(void) {
     for (time = 0; time < WEC_EVENT_BUFFER_SIZE; time++) {
         (void) WEC_EventAdd(time);
     }
-    TEST_ASSERT_EQUAL(WEC_BUFFER_OVERFLOW, WEC_EventAdd(time));
+
+    TEST_ASSERT_EQUAL_MESSAGE(WEC_BUFFER_OVERFLOW, WEC_EventAdd(time),
+            "Expected WEC_BUFFER_OVERFLOW");
 }
 
 void test_EventAdd_should_returnError_when_moduleIsNotStarted(void) {
-    TEST_ASSERT_EQUAL(WEC_NOT_STARTED, WEC_EventAdd(1U));
+    TEST_ASSERT_EQUAL_MESSAGE(WEC_NOT_STARTED, WEC_EventAdd(1U),
+            "Expected WEC_NOT_STARTED");
+}
+
+void test_EventCountGet_should_ExpireOldEvents(void) {
+    (void) WEC_WindowLimitSet(10);
+    (void) WEC_WindowStart(0);
+    (void) WEC_EventAdd(5);
+    (void) WEC_EventAdd(10);
+
+    TEST_ASSERT_EQUAL(2, WEC_EventCountGet(14));
+    TEST_ASSERT_EQUAL(1, WEC_EventCountGet(15));
+    TEST_ASSERT_EQUAL(1, WEC_EventCountGet(19));
+    TEST_ASSERT_EQUAL(0, WEC_EventCountGet(20));
+}
+
+void test_EventCountGet_should_NotExpireOldEvents_when_NotRunning(void) {
+    (void) WEC_WindowLimitSet(10);
+    (void) WEC_WindowStart(0);
+    (void) WEC_EventAdd(5);
+    (void) WEC_EventAdd(10);
+    (void) WEC_WindowStop(10);
+
+    TEST_ASSERT_EQUAL(2, WEC_EventCountGet(14));
+    TEST_ASSERT_EQUAL(2, WEC_EventCountGet(15));
+    TEST_ASSERT_EQUAL(2, WEC_EventCountGet(19));
+    TEST_ASSERT_EQUAL(2, WEC_EventCountGet(20));
 }
 
 int main(void) {
@@ -288,5 +320,7 @@ int main(void) {
     RUN_TEST(test_EventAdd_should_removeOldestEvent_when_addingToFullBuffer);
     RUN_TEST(test_EventAdd_should_returnError_when_addingToFullBuffer);
     RUN_TEST(test_EventAdd_should_returnError_when_moduleIsNotStarted);
+    RUN_TEST(test_EventCountGet_should_ExpireOldEvents);
+    RUN_TEST(test_EventCountGet_should_NotExpireOldEvents_when_NotRunning);
     return UNITY_END();
 }

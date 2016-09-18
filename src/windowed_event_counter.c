@@ -108,6 +108,13 @@ STATIC WEC_TIME_T *WEC_PtrIncrement(WEC_TIME_T ptr[]);
 /// Updates the start time based on the window limit and current time
 STATIC WEC_TIME_T WEC_StartTimeUpdate(WEC_TIME_T currentTime);
 
+/**
+ * Shifts the detection window in time based on the current time passed in and
+ * the window limit.
+ * @param currentTime
+ */
+STATIC WEC_ERROR_T WEC_WindowShift(WEC_TIME_T currentTime);
+
 //
 // Section: Static Function Definitions
 //
@@ -148,30 +155,45 @@ STATIC WEC_TIME_T WEC_StartTimeUpdate(WEC_TIME_T currentTime) {
     return newStart;
 }
 
+STATIC WEC_ERROR_T WEC_WindowShift(WEC_TIME_T eventTime) {
+    bool err = WEC_NOT_STARTED;
+    if (true == WEC_started) {
+        WEC_startTime = WEC_StartTimeUpdate(eventTime);
+        WEC_EventExpire(eventTime);
+        err = WEC_OKAY;
+    }
+    return err;
+}
+
 //
 // Section: Template Module APIs
 //
 
 WEC_ERROR_T WEC_EventAdd(WEC_TIME_T eventTime) {
-    WEC_ERROR_T err = WEC_ERROR;
-    if (false == WEC_started) {
+
+    WEC_ERROR_T err = WEC_WindowShift(eventTime);
+    if (err) {
         return WEC_NOT_STARTED;
     }
-    WEC_EventExpire(eventTime);
-    if (WEC_EVENT_BUFFER_SIZE > WEC_count) {
-        err = WEC_OKAY;
-    } else {
+
+    if (WEC_EVENT_BUFFER_SIZE <= WEC_count) {
         err = WEC_BUFFER_OVERFLOW;
         WEC_EventOldestRemove(); // Buffer overflow
     }
+
     WEC_count++;
-    WEC_startTime = WEC_StartTimeUpdate(eventTime);
     *WEC_eventBufferHead = eventTime;
     WEC_eventBufferHead = WEC_PtrIncrement(WEC_eventBufferHead);
+
     return err;
 }
 
 WEC_COUNT_T WEC_EventCountGet(WEC_TIME_T currentTime) {
+
+    if (true == WEC_started) {
+        (void) WEC_WindowShift(currentTime);
+    }
+
     return WEC_count;
 }
 
@@ -186,13 +208,16 @@ WEC_TIME_T WEC_WindowLimitGet(void) {
 }
 
 WEC_ERROR_T WEC_WindowLimitSet(WEC_TIME_T windowLimit) {
+
     WEC_ERROR_T err = WEC_ERROR;
+
     if (false == WEC_started) {
         err = WEC_OKAY;
         WEC_windowLimit = windowLimit;
     } else {
         err = WEC_ALREADY_STARTED;
     }
+
     return err;
 }
 
@@ -212,11 +237,10 @@ WEC_ERROR_T WEC_WindowStop(WEC_TIME_T stopTime) {
     WEC_ERROR_T err = WEC_ERROR;
     if (true == WEC_started) {
         err = WEC_OKAY;
-        WEC_startTime = WEC_StartTimeUpdate(stopTime);
+        WEC_WindowShift(stopTime);
         WEC_started = false;
         WEC_stopTime = stopTime;
     } else {
-
         err = WEC_NOT_STARTED;
     }
     return err;
@@ -233,7 +257,6 @@ WEC_TIME_T WEC_WindowTimeGet(WEC_TIME_T currentTime) {
         err = WEC_NOT_STARTED;
         windowTime = WEC_stopTime - WEC_startTime;
     }
-    assert(WEC_ERROR != err);
     return windowTime;
 }
 
