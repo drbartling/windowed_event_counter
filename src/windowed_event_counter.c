@@ -1,12 +1,12 @@
 /**
  * @file
- * TODO: windowed_event_counter.c
+ * windowed_event_counter.c
  *
  * @author
  * D. Ryan Bartling
  *
  * @brief
- * Counts number of events that occured within a specified window in time.
+ * Counts number of events that occurred within a specified window in time.
  *
  * Records time of events, keeping track of the number of events that occured
  * within a specified amount of time.
