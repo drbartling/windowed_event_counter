@@ -102,6 +102,9 @@ STATIC void WEC_EventOldestRemove(void);
 /// Removes events equal to or older than the window limit
 STATIC void WEC_EventExpire(WEC_TIME_T currentTime);
 
+/// Checks and handles overflow condition by removing oldest event
+WEC_ERROR_T WEC_OverflowCheck(void);
+
 /// Increments pointers around the circular buffer
 STATIC WEC_TIME_T *WEC_PtrIncrement(WEC_TIME_T ptr[]);
 
@@ -135,14 +138,22 @@ STATIC void WEC_EventExpire(WEC_TIME_T currentTime) {
     }
 }
 
-STATIC WEC_TIME_T * WEC_PtrIncrement(WEC_TIME_T ptr[]) {
-    WEC_TIME_T * const limit = &WEC_eventBuffer[WEC_EVENT_BUFFER_SIZE - 1];
-    if (limit > ptr) {
-        ptr = &ptr[1];
-    } else {
-        ptr = WEC_eventBuffer;
+WEC_ERROR_T WEC_OverflowCheck(void) {
+    if (WEC_EVENT_BUFFER_SIZE <= WEC_count) {
+        WEC_EventOldestRemove(); // Buffer overflow
+        return WEC_BUFFER_OVERFLOW;
     }
-    return ptr;
+    return WEC_OKAY;
+}
+
+STATIC WEC_TIME_T * WEC_PtrIncrement(WEC_TIME_T arrayPtr[]) {
+    WEC_TIME_T * const eventBufferLastElement = WEC_eventBuffer + WEC_EVENT_BUFFER_SIZE - 1;
+    if (eventBufferLastElement > arrayPtr) {
+        arrayPtr++;
+    } else {
+        arrayPtr = WEC_eventBuffer;
+    }
+    return arrayPtr;
 }
 
 STATIC WEC_TIME_T WEC_StartTimeUpdate(WEC_TIME_T currentTime) {
@@ -166,7 +177,7 @@ STATIC WEC_ERROR_T WEC_WindowShift(WEC_TIME_T eventTime) {
 }
 
 //
-// Section: Template Module APIs
+// Section: Windowed Event Counter APIs
 //
 
 WEC_ERROR_T WEC_EventAdd(WEC_TIME_T eventTime) {
@@ -176,10 +187,7 @@ WEC_ERROR_T WEC_EventAdd(WEC_TIME_T eventTime) {
         return WEC_NOT_STARTED;
     }
 
-    if (WEC_EVENT_BUFFER_SIZE <= WEC_count) {
-        err = WEC_BUFFER_OVERFLOW;
-        WEC_EventOldestRemove(); // Buffer overflow
-    }
+    err = WEC_OverflowCheck();
 
     WEC_count++;
     *WEC_eventBufferHead = eventTime;
