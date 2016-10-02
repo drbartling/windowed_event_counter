@@ -96,11 +96,14 @@ STATIC WEC_TIME_T *WEC_eventBufferTail = WEC_eventBuffer;
 // Section: Static Function Prototypes
 //
 
-/// Remove oldest event in the queue
-STATIC void WEC_EventOldestRemove(void);
+/// Appends new event time stamp to the event queue
+STATIC void WEC_EventEnqueue(WEC_TIME_T eventTime);
 
 /// Removes events equal to or older than the window limit
 STATIC void WEC_EventExpire(WEC_TIME_T currentTime);
+
+/// Remove oldest event in the queue
+STATIC void WEC_EventOldestRemove(void);
 
 /// Checks and handles overflow condition by removing oldest event
 WEC_ERROR_T WEC_OverflowCheck(void);
@@ -122,9 +125,10 @@ STATIC WEC_ERROR_T WEC_WindowShift(WEC_TIME_T currentTime);
 // Section: Static Function Definitions
 //
 
-STATIC void WEC_EventOldestRemove(void) {
-    WEC_count--;
-    WEC_eventBufferTail = WEC_PtrIncrement(WEC_eventBufferTail);
+STATIC void WEC_EventEnqueue(WEC_TIME_T eventTime) {
+    WEC_count++;
+    *WEC_eventBufferHead = eventTime;
+    WEC_eventBufferHead = WEC_PtrIncrement(WEC_eventBufferHead);
 }
 
 STATIC void WEC_EventExpire(WEC_TIME_T currentTime) {
@@ -136,6 +140,11 @@ STATIC void WEC_EventExpire(WEC_TIME_T currentTime) {
             WEC_EventOldestRemove();
         }
     }
+}
+
+STATIC void WEC_EventOldestRemove(void) {
+    WEC_count--;
+    WEC_eventBufferTail = WEC_PtrIncrement(WEC_eventBufferTail);
 }
 
 WEC_ERROR_T WEC_OverflowCheck(void) {
@@ -167,13 +176,12 @@ STATIC WEC_TIME_T WEC_StartTimeUpdate(WEC_TIME_T currentTime) {
 }
 
 STATIC WEC_ERROR_T WEC_WindowShift(WEC_TIME_T eventTime) {
-    bool err = WEC_NOT_STARTED;
     if (true == WEC_started) {
         WEC_startTime = WEC_StartTimeUpdate(eventTime);
         WEC_EventExpire(eventTime);
-        err = WEC_OKAY;
+        return WEC_OKAY;
     }
-    return err;
+    return WEC_NOT_STARTED;
 }
 
 //
@@ -181,27 +189,16 @@ STATIC WEC_ERROR_T WEC_WindowShift(WEC_TIME_T eventTime) {
 //
 
 WEC_ERROR_T WEC_EventAdd(WEC_TIME_T eventTime) {
-
-    WEC_ERROR_T err = WEC_WindowShift(eventTime);
-    if (err) {
+    if (WEC_NOT_STARTED == WEC_WindowShift(eventTime)) {
         return WEC_NOT_STARTED;
     }
-
-    err = WEC_OverflowCheck();
-
-    WEC_count++;
-    *WEC_eventBufferHead = eventTime;
-    WEC_eventBufferHead = WEC_PtrIncrement(WEC_eventBufferHead);
-
-    return err;
+    WEC_ERROR_T overflowResult = WEC_OverflowCheck();
+    WEC_EventEnqueue(eventTime);
+    return overflowResult;
 }
 
 WEC_COUNT_T WEC_EventCountGet(WEC_TIME_T currentTime) {
-
-    if (true == WEC_started) {
-        (void) WEC_WindowShift(currentTime);
-    }
-
+    (void) WEC_WindowShift(currentTime);
     return WEC_count;
 }
 
