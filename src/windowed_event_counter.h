@@ -39,8 +39,7 @@
 
 /*
  * Abbreviations Used:
- * TODO: List all abbreviations used in source file
- * Especially those used in function and variable names.
+ * WEC - Windowed Event Counter
  */
 
 #ifndef WINDOWED_EVENT_COUNTER_H    // Guards against multiple inclusion
@@ -49,7 +48,6 @@
 //
 // Section: Included Files
 //
-// TODO: Remove section if not used.
 
 #    include <stdbool.h>
 #    include <stdint.h>

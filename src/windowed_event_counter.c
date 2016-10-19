@@ -1,6 +1,6 @@
 /**
  * @file
- * TODO: windowed_event_counter.c
+ * windowed_event_counter.c
  *
  * @author
  * D. Ryan Bartling
